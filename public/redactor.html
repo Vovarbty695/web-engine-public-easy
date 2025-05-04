@@ -1,154 +1,444 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
+<html lang="uk">
+<head>
     <meta charset="UTF-8" />
-    <title>Pixi + Matter.js</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <title>Текстовий редактор API</title>
     <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background-color: aqua;
-      }
-      canvas {
-        display: block;
-      }
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        nav {
+            width: 100%;
+        }
+
+        .controls-top {
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .main-content {
+            display: flex;
+            flex-grow: 1;
+        }
+
+        .canvas-inspector-area {
+            display: flex;
+            flex-grow: 1; /* Займає основний простір ліворуч */
+        }
+
+        .canvas-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+        }
+
+        #creationButtons {
+            margin-bottom: 10px;
+        }
+
+        #GameWindow {
+            width: 800px;
+            height: 600px;
+            border: 1px solid black;
+            background-color: #fff;
+        }
+
+        #output {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            box-sizing: border-box;
+            font-size: 12px;
+        }
+
+        #propertyEditor {
+            width: 300px;
+            height: 100%;
+            border-left: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #propertyEditor h3 {
+            margin-top: 0;
+        }
+
+        #propertyEditor .property-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        #propertyEditor .property-row label {
+            width: auto;
+            margin-right: 5px;
+            text-align: left;
+        }
+
+        #propertyEditor .property-row input[type="number"],
+        #propertyEditor .property-row input[type="text"],
+        #propertyEditor .property-row input[type="color"],
+        #propertyEditor .property-row textarea {
+            flex-grow: 1;
+            padding: 5px;
+            margin-bottom: 0;
+            box-sizing: border-box;
+        }
+
+        #codeEditorContainer {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            width: 30%;
+            height: 200px;
+            border-top: 1px solid #ccc;
+            border-left: 1px solid #ccc;
+            background-color: #f8f8f8;
+            box-sizing: border-box;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #codeEditor {
+            flex-grow: 1;
+            font-family: monospace;
+            font-size: 14px;
+            border: none;
+            outline: none;
+            resize: none;
+            background-color: transparent;
+        }
+        #propertyEditor .property-row {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 5px;
+        }
+
+        #propertyEditor .property-row label {
+            width: auto;
+            margin-right: 5px;
+            text-align: left;
+            padding-bottom: 3px;
+        }
+
+        #propertyEditor .property-row input[type="number"],
+        #propertyEditor .property-row input[type="text"],
+        #propertyEditor .property-row input[type="color"],
+        #propertyEditor .property-row textarea {
+            flex-grow: 1;
+            padding: 5px;
+            margin-bottom: 0;
+            box-sizing: border-box;
+        }
     </style>
-  </head>
-  <body>
-    <script src="https://pixijs.download/release/pixi.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-sm justify-content-center bg-dark">
+        <ul class="nav">
+            <li class="nav-item"><a href="index.html" class="nav-link text-light">Головна</a></li>
+            <li class="nav-item"><a href="AboutUs.html" class="nav-link text-light">Про нас</a></li>
+            <li class="nav-item"><a href="doc.html" class="nav-link text-light">Документація</a></li>
+            <li class="nav-item"><a href="redactor.html" class="nav-link text-light">Редактор</a></li>
+        </ul>
+    </nav>
+
+    <div class="controls-top">
+        <div id="creationButtons">
+            <button id="createRect" class="btn btn-secondary">Прямокутник</button>
+            <button id="createCircle" class="btn btn-secondary">Круг</button>
+            <button id="createText" class="btn btn-secondary">Текст</button>
+            <button id="createPlayer" class="btn btn-secondary">Гравець</button>
+        </div>
+
+        <div class="ms-4">
+            <div class="mb-2">
+                <label for="playerType">Тип гравця:</label>
+                <select id="playerType" class="form-select form-select-sm w-auto d-inline-block">
+                    <option value="rect">Прямокутник</option>
+                    <option value="circle">Коло</option>
+                    <option value="image">Зображення</option>
+                </select>
+            </div>
+            <div class="mb-2">
+                <label for="playerColor">Колір:</label>
+                <input type="color" id="playerColor" value="#000000" class="form-control form-control-sm d-inline-block w-auto" />
+            </div>
+            <div class="mb-2" id="playerImageContainer" style="display: none;">
+                <label for="playerImage">URL зображення:</label>
+                <input type="text" id="playerImage" class="form-control form-control-sm" placeholder="https://example.com/image.png" />
+            </div>
+        </div>
+
+        <div class="controls-run-save ms-auto">
+            <button id="runButton" class="btn btn-primary">Запустити код</button>
+            <button id="saveButton" class="btn btn-success">Зберегти проєкт</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="canvas-inspector-area">
+            <div class="canvas-area">
+                <canvas id="GameWindow" width="800" height="600"></canvas>
+                <pre id="output"></pre>
+            </div>
+            <div id="propertyEditor">
+                <h3>Інспектор</h3>
+                <p>Виберіть об'єкт на канвасі для редагування.</p>
+            </div>
+        </div>
+        <div id="codeEditorContainer">
+            <textarea id="codeEditor">// Введіть тут свій код API
+// Наприклад:
+// rect(50, 50, 100, 50, 'red');</textarea>
+        </div>
+    </div>
 
     <script>
-      let app;
+        const codeEditor = document.getElementById('codeEditor');
+        const runButton = document.getElementById('runButton');
+        const saveButton = document.getElementById('saveButton');
+        const outputDiv = document.getElementById('output');
+        const gameCanvas = document.getElementById('GameWindow');
+        const gameContext = gameCanvas.getContext('2d');
+        const createRectButton = document.getElementById('createRect');
+        const createCircleButton = document.getElementById('createCircle');
+        const createTextButton = document.getElementById('createText');
+        const createPlayerButton = document.getElementById('createPlayer');
+        const propertyEditorDiv = document.getElementById('propertyEditor');
 
-      async function scene(width, height, color) {
-        app = new PIXI.Application();
-        await app.init({
-          width: width,
-          height: height,
-          background: color,
-          antialias: true,
-        });
-        document.body.appendChild(app.canvas);
-      }
+        let selectedObject = null;
+        let objectsOnCanvas = [];
 
-      const Engine = Matter.Engine,
-        World = Matter.World,
-        Bodies = Matter.Bodies;
-      const engine = Engine.create();
-      const world = engine.world;
-
-      function createRect(
-        x,
-        y,
-        width,
-        height,
-        color = 0xff3333,
-        isStatic = false
-      ) {
-        const body = Bodies.rectangle(x, y, width, height, { isStatic });
-        World.add(world, body);
-
-        const graphics = new PIXI.Graphics();
-        graphics.beginFill(color);
-        graphics.drawRect(-width / 2, -height / 2, width, height);
-        graphics.endFill();
-        graphics.x = x;
-        graphics.y = y;
-        app.stage.addChild(graphics);
-
-        return { body, graphics };
-      }
-
-      function createCircle(x, y, radius, color = 0x33aaff, isStatic = false) {
-        const body = Bodies.circle(x, y, radius, { isStatic });
-        World.add(world, body);
-
-        const graphics = new PIXI.Graphics();
-        graphics.beginFill(color);
-        graphics.drawCircle(0, 0, radius);
-        graphics.endFill();
-        graphics.x = x;
-        graphics.y = y;
-        app.stage.addChild(graphics);
-
-        return { body, graphics };
-      }
-
-      async function createImg(x, y, path, isStatic = true) {
-        try {
-          const texture = PIXI.Texture.from(path); // Використовуємо PIXI.Texture.from
-          const img = new PIXI.Sprite(texture);
-          img.anchor.set(0.5);
-          img.x = x;
-          img.y = y;
-          app.stage.addChild(img);
-
-          const body = Bodies.rectangle(x, y, img.width, img.height, {
-            isStatic,
-          });
-          World.add(world, body);
-
-          return { body, graphics: img };
-        } catch (error) {
-          console.error("Помилка завантаження зображення:", error);
-          return null;
+        function initC() {
         }
-      }
 
-      async function initialize() {
-        await scene(800, 600, "skyblue");
-
-        if (engine.world.gravity.y === 0) {
-          engine.world.gravity.y = 1;
-          console.log(
-            "Гравітація була встановлена на стандартне значення (1)."
-          );
-        } else {
-          console.log("Гравітація:", engine.world.gravity);
+        // Функції для малювання на канвасі БЕЗ додавання в objectsOnCanvas
+        function drawRect(x, y, width, height, color) {
+            gameContext.fillStyle = color;
+            gameContext.fillRect(x, y, width, height);
         }
-        async function createImg(x, y, path, isStatic = true) {
-          try {
-            await PIXI.Assets.load(path); // Завантаження текстури
-            const img = PIXI.Sprite.from(path); // Створення спрайта
-            img.anchor.set(0.5);
-            img.x = x;
-            img.y = y;
-            app.stage.addChild(img);
 
-            const body = Bodies.rectangle(x, y, img.width, img.height, {
-              isStatic,
+        function drawCircle(x, y, r, color) {
+            gameContext.beginPath();
+            gameContext.fillStyle = color;
+            gameContext.arc(x, y, r, 0, 2 * Math.PI);
+            gameContext.fill();
+        }
+
+        function drawText(t, x, y, font, color) {
+            gameContext.font = font;
+            gameContext.fillStyle = color;
+            gameContext.fillText(t, x, y);
+        }
+
+        function drawImage(path, x, y) {
+            const img = new Image();
+            img.src = path;
+            img.onload = function () {
+                gameContext.drawImage(img, x, y);
+            };
+        }
+
+        function redrawCanvas() {
+            gameContext.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+            objectsOnCanvas.forEach(obj => {
+                if (obj.type === 'rect') {
+                    drawRect(obj.x, obj.y, obj.width, obj.height, obj.color);
+                } else if (obj.type === 'circle') {
+                    drawCircle(obj.x, obj.y, obj.r, obj.color);
+                } else if (obj.type === 'text') {
+                    drawText(obj.text, obj.x, obj.y, obj.font, obj.color);
+                } else if (obj.type === 'image') {
+                    drawImage(obj.path, obj.x, obj.y);
+                }
             });
-            World.add(world, body);
-
-            return { body, graphics: img };
-          } catch (error) {
-            console.error("Помилка завантаження зображення:", error);
-            return null;
-          }
         }
 
-        const box = createRect(320, 50, 50, 50);
-        const ground = createRect(320, 340, 640, 40, "lightgreen", true);
-        const sun = createCircle(50, 50, 30, 0xffff00, true);
-        const sky = await createImg(200, 100, "img/cloud.png");
+        function addObjectToCanvas(type, properties = {}) {
+            const newObject = { type, ...properties };
+            objectsOnCanvas.push(newObject);
+            redrawCanvas();
+            selectObject(newObject);
+        }
 
-        const objects = [box, ground, sun, sky];
+        // Функції-обгортки для додавання об'єктів через код користувача
+        function rect(x, y, width, height, color) {
+            addObjectToCanvas('rect', { x, y, width, height, color });
+        }
 
-        app.ticker.add(() => {
-          Engine.update(engine, app.ticker.deltaMS);
+        function circle(x, y, r, color) {
+            addObjectToCanvas('circle', { x, y, r, color });
+        }
 
-          for (const obj of objects) {
-            if (obj && obj.body && obj.graphics) {
-              obj.graphics.x = obj.body.position.x;
-              obj.graphics.y = obj.body.position.y;
-              obj.graphics.rotation = obj.body.angle;
+        function text(t, x, y, font, color) {
+            addObjectToCanvas('text', { text: t, x, y, font, color });
+        }
+
+        function image(path, x, y) {
+            addObjectToCanvas('image', { path, x, y });
+        }
+
+        function player(type = 'rect', color = 'black', x = 0, y = 0, width = 20, height = 20, path = '') {
+            if (type === 'rect') {
+                addObjectToCanvas('rect', { x, y, width, height, color });
+            } else if (type === 'circle') {
+                addObjectToCanvas('circle', { x, y, r: width / 2, color });
+            } else if (type === 'image' && path) {
+                addObjectToCanvas('image', { x, y, path });
             }
-          }
-        });
-      }
+        }
 
-      initialize();
+        createRectButton.addEventListener('click', () => {
+            addObjectToCanvas('rect', { x: 100, y: 100, width: 50, height: 50, color: 'blue' });
+        });
+
+        createCircleButton.addEventListener('click', () => {
+            addObjectToCanvas('circle', { x: 200, y: 150, r: 30, color: 'green' });
+        });
+
+        createTextButton.addEventListener('click', () => {
+            addObjectToCanvas('text', { text: 'Привіт', x: 300, y: 200, font: '16px Arial', color: 'black' });
+        });
+
+        createPlayerButton.addEventListener('click', function () {
+            const type = document.getElementById('playerType').value;
+            const color = document.getElementById('playerColor').value;
+            const path = document.getElementById('playerImage').value;
+            player(type, color, 100, 100, 50, 50, path);
+        });
+
+        document.getElementById('playerType').addEventListener('change', function () {
+            const container = document.getElementById('playerImageContainer');
+            container.style.display = this.value === 'image' ? 'block' : 'none';
+        });
+
+
+
+        function selectObject(object) {
+            selectedObject = object;
+            populatePropertyEditor(object);
+        }
+
+        function populatePropertyEditor(object) {
+            propertyEditorDiv.innerHTML = '<h3>Інспектор</h3>';
+            if (object) {
+                for (const key in object) {
+                    if (key !== 'type') {
+                        const propertyRow = document.createElement('div');
+                        propertyRow.classList.add('property-row');
+                        const label = document.createElement('label');
+                        label.textContent = `${key}:`;
+                        propertyRow.appendChild(label);
+
+                        const input = document.createElement('input');
+                        input.value = object[key];
+
+                        if (typeof object[key] === 'number') {
+                            input.type = 'number';
+                            input.addEventListener('change', (e) => {
+                                object[key] = parseFloat(e.target.value);
+                                redrawCanvas();
+                            });
+                        } else if (key === 'color') {
+                            input.type = 'color';
+                            input.addEventListener('change', (e) => {
+                                object[key] = e.target.value;
+                                redrawCanvas();
+                            });
+                        } else {
+                            input.addEventListener('change', (e) => {
+                                object[key] = e.target.value;
+                                redrawCanvas();
+                            });
+                        }
+
+                        propertyRow.appendChild(input);
+                        propertyEditorDiv.appendChild(propertyRow);
+                    }
+                }
+            } else {
+                const msg = document.createElement('p');
+                msg.textContent = 'Виберіть об\'єкт на канвасі для редагування.';
+                propertyEditorDiv.appendChild(msg);
+            }
+        }
+
+        gameCanvas.addEventListener('click', (e) => {
+            const rect = gameCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            for (let i = objectsOnCanvas.length - 1; i >= 0; i--) {
+                const obj = objectsOnCanvas[i];
+                if (obj.type === 'rect' && x >= obj.x && x <= obj.x + obj.width && y >= obj.y && y <= obj.y + obj.height) {
+                    selectObject(obj);
+                    return;
+                } else if (obj.type === 'circle' && Math.sqrt((x - obj.x) ** 2 + (y - obj.y) ** 2) <= obj.r) {
+                    selectObject(obj);
+                    return;
+                } else if (obj.type === 'text' || obj.type === 'image') {
+                    selectObject(obj);
+                    return;
+                }
+            }
+            selectObject(null);
+        });
+
+        runButton.addEventListener('click', function () {
+            const codeToRun = codeEditor.value;
+            outputDiv.textContent = "Виконується код...\n";
+            try {
+                gameContext.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+                objectsOnCanvas = [];
+                outputDiv.textContent += "Код для виконання: " + codeToRun + "\n";
+                // Передаємо тільки функції для *створення* об'єктів
+                const userFunction = new Function('rect', 'circle', 'text', 'image', 'player', codeToRun);
+                outputDiv.textContent += "Функція створена\n";
+                // Викликаємо userFunction
+                userFunction(rect, circle, text, image, player);
+                outputDiv.textContent += "Функція виконана\n";
+
+                outputDiv.textContent += "Кількість об'єктів в objectsOnCanvas: " + objectsOnCanvas.length + "\n";
+                objectsOnCanvas.forEach(obj => {
+                    outputDiv.textContent += "Об'єкт з canvas: " + JSON.stringify(obj) + "\n";
+                });
+                redrawCanvas();
+            } catch (error) {
+                outputDiv.textContent += "\nПомилка виконання: " + error;
+            }
+        });
+
+        saveButton.addEventListener('click', function () {
+            localStorage.setItem('savedCode', codeEditor.value);
+            outputDiv.textContent += "Проєкт збережено!\n";
+        });
+
+        window.onload = function () {
+            const savedCode = localStorage.getItem('savedCode');
+            if (savedCode) codeEditor.value = savedCode;
+            initC();
+            redrawCanvas();
+            populatePropertyEditor(null);
+        };
     </script>
-  </body>
+</body>
 </html>
+
