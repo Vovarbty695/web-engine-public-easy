@@ -1,7 +1,7 @@
-import tkrinter as tk
+import tkinter as tk
 
 root = tk.Tk()
 
-root.geomenty("1920x1080")
+root.geometry("1920x1080")
 
 root.mainloop()
